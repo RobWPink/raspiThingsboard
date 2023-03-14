@@ -93,15 +93,19 @@ allData = {
   "fcv205" : 0,
   "fcv549" : 0
 }
-
-ser = serial.Serial(
-  port='/dev/ttyACM0',
-  baudrate = 9600,
-  parity=serial.PARITY_NONE,
-  stopbits=serial.STOPBITS_ONE,
-  bytesize=serial.EIGHTBITS,
-  #timeout=none
-)
+try:
+  ser = serial.Serial(
+    port='/dev/ttyACM0',
+    baudrate = 9600,
+    parity=serial.PARITY_NONE,
+    stopbits=serial.STOPBITS_ONE,
+    bytesize=serial.EIGHTBITS,
+    #timeout=none
+  )
+  passed = True
+except serial.serialutil.SerialException:
+  passed = False
+  ser.close()
 
 class sendDataProgram:
   def __init__(self):
@@ -236,6 +240,7 @@ def main():
   
   try:
     global client
+    global passed
     client = connect_mqtt()
     
     sendData = sendDataProgram()
@@ -246,7 +251,26 @@ def main():
     receiveDataThread = Thread(target=receiveData.run) 
     receiveDataThread.start()
     while(1):
-      pass
+      while not passed:
+        try:
+          ser = serial.Serial(
+            port='/dev/ttyUSB0',
+            baudrate = 9600,
+            parity=serial.PARITY_NONE,
+            stopbits=serial.STOPBITS_ONE,
+            bytesize=serial.EIGHTBITS,
+            #timeout=none
+          )
+          passed = True
+        except serial.serialutil.SerialException:
+          passed = False
+      while passed:
+        try:
+          pass
+        except serial.serialutil.SerialException:
+          passed = false
+          ser.close
+        
       
   except KeyboardInterrupt:
     print('Interrupted')
