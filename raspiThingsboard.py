@@ -9,19 +9,19 @@ port = 1883
 telemetry = 'v1/devices/me/telemetry'
 attributes = 'v1/devices/me/attributes'
 
-if sys.argv[1]:
+try:
   clientId = sys.argv[1]
-else:
+except:
   clientId = 'unknownID'
   
-if sys.argv[2]:
+try:
   username = sys.argv[2]
-else:
+except:
   username = 'v1Tu9MBLtUhNbs2ygGKf'
 
-if sys.argv[3]:
+try:
   password = sys.argv[3]
-else:
+except:
   password = 'test1234'
 
 #[time,tt511,tt512,burnerTemp,tt513,tt514,tt407,tt408,tt410,tt411,tt430,tt441,tt442,tt443,tt444,tt445,tt446,tt447,tt448,tt449,tubeMean,tubeMax,tt142,tt301,tt303,tt306,tt313,tt319,bmmAlarm,bmmProof,estop,greenButton,greenPilot,amberButton,amberPilot,psh,psl,zsl,bmmRun,xv501,xv217,xv474,xv1100,xv122,twv308,twv310,fcv134FeedBack,bl508FeedBack,pmp204FeedBack,fcv549FeedBack,pt654,pt304,pt420,pt383,pt318,ft132,ft219,bl508,fcv134,pmp204,fcv141,fcv205,fcv549]
