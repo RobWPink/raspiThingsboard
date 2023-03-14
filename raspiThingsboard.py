@@ -121,53 +121,53 @@ class sendDataProgram:
       global all
       while True:
         time.sleep(0.5)
-        
-        raw=ser.readline()
-        print(raw)
-        if len(raw) < 2:
-          print(0)
-        elif 'OK'.encode() in raw:
-          ser.flush()
-          time.sleep(1)
-          print('inputting "sql"')
-          ser.write(bytes('sql','utf-8'))
-        elif ','.encode() in raw:
-          parsed = raw.split(','.encode())
-          parsed[-1].replace(bytes('\r\n','utf-8'),bytes('','utf-8'))
-          try:
-            data = [float(i) for i in parsed]
-            if len(data) == 63:
-              i = 0 
-              msg = '['
-              for key in allData:
-                if flushData:
-                  ser.flushInput()
-                  ser.flushOutput()
-                  time.sleep(0.1)
-                  flushData = False
-                  break
-                if not allData[key] == data[i] or sendAll:
-                  msg = msg + '{"'+key+'":'+str(allData[key])+'},' 
-                  allData[key] = data[i]
-                  if i % 10 == 0 or i == 62:
-                    msg = msg[:-1]
-                    msg = msg + ']'
-                    print(msg)
-                    result = client.publish(topic, msg)
-                    status = result[0]
-                    if not status == 0:
-                      print(f"Failed to send message to topic {topic}")
-                      msg = '['
-                    else:
-                      msg = '['
-                      time.sleep(0.25)
-                  i = i + 1 #for loop int increment
-                ser.reset_input_buffer()
-              
-          except Exception as e:
-            print(e)
-        else:
-          pass
+        if passed:
+          raw=ser.readline()
+          print(raw)
+          if len(raw) < 2:
+            print(0)
+          elif 'OK'.encode() in raw:
+            ser.flush()
+            time.sleep(1)
+            print('inputting "sql"')
+            ser.write(bytes('sql','utf-8'))
+          elif ','.encode() in raw:
+            parsed = raw.split(','.encode())
+            parsed[-1].replace(bytes('\r\n','utf-8'),bytes('','utf-8'))
+            try:
+              data = [float(i) for i in parsed]
+              if len(data) == 63:
+                i = 0 
+                msg = '['
+                for key in allData:
+                  if flushData:
+                    ser.flushInput()
+                    ser.flushOutput()
+                    time.sleep(0.1)
+                    flushData = False
+                    break
+                  if not allData[key] == data[i] or sendAll:
+                    msg = msg + '{"'+key+'":'+str(allData[key])+'},' 
+                    allData[key] = data[i]
+                    if i % 10 == 0 or i == 62:
+                      msg = msg[:-1]
+                      msg = msg + ']'
+                      print(msg)
+                      result = client.publish(topic, msg)
+                      status = result[0]
+                      if not status == 0:
+                        print(f"Failed to send message to topic {topic}")
+                        msg = '['
+                      else:
+                        msg = '['
+                        time.sleep(0.25)
+                    i = i + 1 #for loop int increment
+                  ser.reset_input_buffer()
+                
+            except Exception as e:
+              print(e)
+          else:
+            pass
       
     global client
 
@@ -187,36 +187,37 @@ class receiveDataProgram:
       def on_message(client, userdata, msg):
         global sendAll
         global flushData
-        try:
-          received = msg.payload.decode()
-          print(received)
-          output = ""
-          if 'ctl' in received:
-            flushData = True
-            received = received.replace("ctl","")
-            number = re.search('{".*":(.+?)}', received).group(1)
-            name = re.search('{"(.+?)":.*}', received).group(1)
-            if name == "bmmRun":
-              name = "bmm"
-            if 'false' in number or 'true' in number:
-              output = name
-            else:
-              output = name +" "+ number
-          elif "legacy" in received and not "deleted" in received:
-            if "all" in received:
-              sendAll = not sendAll
+        if passed:
+          try:
+            received = msg.payload.decode()
+            print(received)
+            output = ""
+            if 'ctl' in received:
+              flushData = True
+              received = received.replace("ctl","")
+              number = re.search('{".*":(.+?)}', received).group(1)
+              name = re.search('{"(.+?)":.*}', received).group(1)
+              if name == "bmmRun":
+                name = "bmm"
+              if 'false' in number or 'true' in number:
+                output = name
+              else:
+                output = name +" "+ number
+            elif "legacy" in received and not "deleted" in received:
+              if "all" in received:
+                sendAll = not sendAll
+                output = ''
+              else:
+                output = re.search('{"legacy":"(.+?)"}', received).group(1)
+            elif "deleted" in received:
               output = ''
-            else:
-              output = re.search('{"legacy":"(.+?)"}', received).group(1)
-          elif "deleted" in received:
-            output = ''
 
-          if not output == '':
-            print(output)
-            ser.write(bytes(output,'utf-8'))
-            #print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
-        except Exception as e:
-          print(e)
+            if not output == '':
+              print(output)
+              ser.write(bytes(output,'utf-8'))
+              #print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+          except Exception as e:
+            print(e)
       client.subscribe(attributes)
       client.on_message = on_message
     subscribe(client)
