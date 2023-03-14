@@ -17,7 +17,7 @@ except:
 try:
   username = sys.argv[2]
 except:
-  username = 'v1Tu9MBLtUhNbs2ygGKf'
+  username = 'unknown'
 
 try:
   password = sys.argv[3]
@@ -103,9 +103,8 @@ try:
     #timeout=none
   )
   passed = True
-except serial.serialutil.SerialException:
+except serial.serialutil.SerialException or  FileNotFoundError:
   passed = False
-  ser.close()
 
 class sendDataProgram:
   def __init__(self):
@@ -263,14 +262,13 @@ def main():
             #timeout=none
           )
           passed = True
-        except serial.serialutil.SerialException:
+        except serial.serialutil.SerialException or FileNotFoundError:
           passed = False
       while passed:
         try:
           pass
-        except serial.serialutil.SerialException:
+        except serial.serialutil.SerialException or FileNotFoundError:
           passed = false
-          ser.close
         
       
   except KeyboardInterrupt:
