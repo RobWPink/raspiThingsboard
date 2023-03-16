@@ -4,7 +4,7 @@ from threading import Thread
 import sys, time, serial, struct,re
 from datetime import datetime
 
-host = '3.142.96.59'
+host = '34.236.51.120'
 port = 1883
 telemetry = 'v1/devices/me/telemetry'
 attributes = 'v1/devices/me/attributes'
