@@ -28,6 +28,7 @@ except:
 prev_msg = ''
 sendAll = True
 flushData = False
+dataDelay = 5
 allData = {
   "time" : 0,
   "tt511" : 0,
@@ -118,6 +119,7 @@ class sendDataProgram:
       global allData
       global flushData
       global all
+      global dataDelay
       while True:
         time.sleep(0.5)
         if passed:
@@ -137,7 +139,7 @@ class sendDataProgram:
               data = [float(i) for i in parsed]
               if len(data) == 63:
                 i = 0 
-                msg = '['
+                msg = "{"
                 for key in allData:
                   if flushData:
                     ser.flushInput()
@@ -146,22 +148,20 @@ class sendDataProgram:
                     flushData = False
                     break
                   if not allData[key] == data[i] or sendAll:
-                    msg = msg + '{"'+key+'":'+str(allData[key])+'},' 
+                    msg = msg + "\""+key+"\":"+str(allData[key])+","
                     allData[key] = data[i]
-                    if i % 10 == 0 or i == 62:
-                      msg = msg[:-1]
-                      msg = msg + ']'
-                      print(msg)
-                      result = client.publish(topic, msg)
-                      status = result[0]
-                      if not status == 0:
-                        print(f"Failed to send message to topic {topic}")
-                        msg = '['
-                      else:
-                        msg = '['
-                        time.sleep(0.25)
-                    i = i + 1 #for loop int increment
-                  ser.reset_input_buffer()
+                  i = i + 1
+                msg = msg[:-1]
+                msg = msg + "}"
+                print(msg)
+                print(" ")
+                result = client.publish(topic, msg)
+                status = result[0]
+                if not status == 0:
+                  print(f"Failed to send message to topic {topic}")
+                else:
+                  time.sleep(dataDelay)
+                ser.reset_input_buffer()
                 
             except Exception as e:
               print(e)
@@ -186,6 +186,7 @@ class receiveDataProgram:
       def on_message(client, userdata, msg):
         global sendAll
         global flushData
+        global dataDelay
         if passed:
           try:
             received = msg.payload.decode()
@@ -208,6 +209,9 @@ class receiveDataProgram:
                 output = ''
               else:
                 output = re.search('{"legacy":"(.+?)"}', received).group(1)
+            elif "dataDelay" in received and not "deleted" in received:
+              dataDelay = int(re.search('{".*":(.+?)}', received).group(1))
+              output = ''
             elif "deleted" in received:
               output = ''
 
