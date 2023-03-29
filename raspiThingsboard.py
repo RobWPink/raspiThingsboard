@@ -150,17 +150,20 @@ class sendDataProgram:
                   if not allData[key] == data[i] or sendAll:
                     msg = msg + "\""+key+"\":"+str(allData[key])+","
                     allData[key] = data[i]
+                    if i % 2 == 0 or i == (len(allData) - 1):
+                      msg = msg[:-1]
+                      msg = msg + '}'
+                      print(msg)
+                      result = client.publish(topic, msg)
+                      status = result[0]
+                      if not status == 0:
+                        print(f"Failed to send message to topic {topic}")
+                        msg = "{"
+                      else:
+                        time.sleep(0.1)
+                        msg = "{"
                   i = i + 1
-                msg = msg[:-1]
-                msg = msg + "}"
-                print(msg)
-                print(" ")
-                result = client.publish(topic, msg)
-                status = result[0]
-                if not status == 0:
-                  print(f"Failed to send message to topic {topic}")
-                else:
-                  time.sleep(dataDelay)
+                time.sleep(dataDelay)
                 ser.reset_input_buffer()
                 
             except Exception as e:
