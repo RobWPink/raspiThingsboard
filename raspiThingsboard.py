@@ -26,73 +26,74 @@ except:
 
 #[time,tt511,tt512,burnerTemp,tt513,tt514,tt407,tt408,tt410,tt411,tt430,tt441,tt442,tt443,tt444,tt445,tt446,tt447,tt448,tt449,tubeMean,tubeMax,tt142,tt301,tt303,tt306,tt313,tt319,bmmAlarm,bmmProof,estop,greenButton,greenPilot,amberButton,amberPilot,psh,psl,zsl,bmmRun,xv501,xv217,xv474,xv1100,xv122,twv308,twv310,fcv134FeedBack,bl508FeedBack,pmp204FeedBack,fcv549FeedBack,pt654,pt304,pt420,pt383,pt318,ft132,ft219,bl508,fcv134,pmp204,fcv141,fcv205,fcv549]
 prev_msg = ''
-sendAll = True
+sendAll = False
 flushData = False
 dataDelay = 5
+changed = [" "]*63
 allData = {
-  "time" : 0,
-  "tt511" : 0,
-  "tt512" : 0,
-  "burnerTemp" : 0,
-  "tt513" : 0,
-  "tt514" : 0,
-  "tt407" : 0,
-  "tt408" : 0,
-  "tt410" : 0,
-  "tt411" : 0,
-  "tt430" : 0,
-  "tt441" : 0,
-  "tt442" : 0,
-  "tt443" : 0,
-  "tt444" : 0,
-  "tt445" : 0,
-  "tt446" : 0,
-  "tt447" : 0,
-  "tt448" : 0,
-  "tt449" : 0,
-  "tubeMean" : 0,
-  "tubeMax" : 0,
-  "tt142" : 0,
-  "tt301" : 0,
-  "tt303" : 0,
-  "tt306" : 0,
-  "tt313" : 0,
-  "tt319" : 0,
-  "bmmAlarm" : 0,
-  "bmmProof" : 0,
-  "estop" : 0,
-  "greenButton" : 0,
-  "greenPilot" : 0,
-  "amberButton" : 0,
-  "amberPilot" : 0,
-  "psh" : 0,
-  "psl" : 0,
-  "zsl" : 0,
-  "bmmRun" : 0,
-  "xv501" : 0,
-  "xv217" : 0,
-  "xv474" : 0,
-  "xv1100" : 0,
-  "xv122" : 0,
-  "twv308" : 0,
-  "twv310" : 0,
-  "fcv134FeedBack" : 0,
-  "bl508FeedBack" : 0,
-  "pmp204FeedBack" : 0,
-  "fcv549FeedBack" : 0,
-  "pt654" : 0,
-  "pt304" : 0,
-  "pt420" : 0,
-  "pt383" : 0,
-  "pt318" : 0,
-  "ft132" : 0,
-  "ft219" : 0,
-  "bl508" : 0,
-  "fcv134" : 0,
-  "pmp204" : 0,
-  "fcv141" : 0,
-  "fcv205" : 0,
-  "fcv549" : 0
+  "time": 0.0,
+  "tt511": 0.0,
+  "tt512": 0.0,
+  "burnerTemp": 0.0,
+  "tt513": 0.0,
+  "tt514": 0.0,
+  "tt407": 0.0,
+  "tt408": 0.0,
+  "tt410": 0.0,
+  "tt411": 0.0,
+  "tt430": 0.0,
+  "tt441": 0.0,
+  "tt442": 0.0,
+  "tt443": 0.0,
+  "tt444": 0.0,
+  "tt445": 0.0,
+  "tt446": 0.0,
+  "tt447": 0.0,
+  "tt448": 0.0,
+  "tt449": 0.0,
+  "tubeMean": 0.0,
+  "tubeMax": 0.0,
+  "tt142": 0.0,
+  "tt301": 0.0,
+  "tt303": 0.0,
+  "tt306": 0.0,
+  "tt313": 0.0,
+  "tt319": 0.0,
+  "bmmAlarm": 0.0,
+  "bmmProof": 0.0,
+  "estop": 0.0,
+  "greenButton": 0.0,
+  "greenPilot": 0.0,
+  "amberButton": 0.0,
+  "amberPilot": 0.0,
+  "psh": 0.0,
+  "psl": 0.0,
+  "zsl": 0.0,
+  "bmmRun": 0.0,
+  "xv501": 0.0,
+  "xv217": 0.0,
+  "xv474": 0.0,
+  "xv1100": 0.0,
+  "xv122": 0.0,
+  "twv308": 0.0,
+  "twv310": 0.0,
+  "fcv134FeedBack": 0.0,
+  "bl508FeedBack": 0.0,
+  "pmp204FeedBack": 0.0,
+  "fcv549FeedBack": 0.0,
+  "pt654": 0.0,
+  "pt304": 0.0,
+  "pt420": 0.0,
+  "pt383": 0.0,
+  "pt318": 0.0,
+  "ft132": 0.0,
+  "ft219": 0.0,
+  "bl508": 0.0,
+  "fcv134": 0.0,
+  "pmp204": 0.0,
+  "fcv141": 0.0,
+  "fcv205": 0.0,
+  "fcv549": 0.0
 }
 try:
   ser = serial.Serial(
@@ -117,6 +118,7 @@ class sendDataProgram:
   def run(self):
     def publish(client,topic):
       global allData
+      global changed
       global flushData
       global all
       global dataDelay
@@ -139,6 +141,7 @@ class sendDataProgram:
               data = [float(i) for i in parsed]
               if len(data) == 63:
                 i = 0 
+                j = 0
                 msg = "{"
                 for key in allData:
                   if flushData:
@@ -148,9 +151,16 @@ class sendDataProgram:
                     flushData = False
                     break
                   if not allData[key] == data[i] or sendAll:
-                    msg = msg + "\""+key+"\":"+str(allData[key])+","
                     allData[key] = data[i]
-                    if i % 2 == 0 or i == (len(allData) - 1):
+                    changed[j] = key
+                    j = j + 1
+                  i = i + 1
+                i = 0
+                j = 0
+                for changedKey in changed:
+                  if not changedKey == " ": 
+                    msg = msg + "\"" + changedKey + "\":" + str(allData[changedKey]) + ","
+                    if i % 2 == 0 or changed[i+1] == " ":
                       msg = msg[:-1]
                       msg = msg + '}'
                       print(msg)
@@ -162,7 +172,12 @@ class sendDataProgram:
                       else:
                         time.sleep(0.1)
                         msg = "{"
-                  i = i + 1
+                    i = i + 1
+                  else:
+                    changed = [" "]*63
+                    break
+                  
+                  
                 time.sleep(dataDelay)
                 ser.reset_input_buffer()
                 
