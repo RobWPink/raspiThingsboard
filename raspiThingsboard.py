@@ -24,12 +24,12 @@ try:
 except:
   password = 'test1234'
 
-#[time,tt511,tt512,burnerTemp,tt513,tt514,tt407,tt408,tt410,tt411,tt430,tt441,tt442,tt443,tt444,tt445,tt446,tt447,tt448,tt449,tubeMean,tubeMax,tt142,tt301,tt303,tt306,tt313,tt319,bmmAlarm,bmmProof,estop,greenButton,greenPilot,amberButton,amberPilot,psh,psl,zsl,bmmRun,xv501,xv217,xv474,xv1100,xv122,twv308,twv310,fcv134FeedBack,bl508FeedBack,pmp204FeedBack,fcv549FeedBack,pt654,pt304,pt420,pt383,pt318,ft132,ft219,bl508,fcv134,pmp204,fcv141,fcv205,fcv549]
+#[time,tt511,tt512,burnerTemp,tt513,tt514,tt407,tt408,tt410,tt411,tt430,tt441,tt442,tt443,tt444,tt445,tt446,tt447,tt448,tt449,tubeMean,tubeMax,tt142,tt301,tt303,tt306,tt313,tt319,bmmAlarm,bmmProof,estop,greenButton,greenPilot,amberButton,amberPilot,psh,psl,zsl,bmmRun,xv501,xv217,xv474,xv1100,xv122,twv308,twv310,fcv134FeedBack,bl508FeedBack,pmp204FeedBack,fcv549FeedBack,pt654,pt304,pt420,pt383,pt318,ft132,ft219,bl508,fcv134,pmp204,fcv141,fcv205,fcv549,fcv141FeedBack,fcv205FeedBack,pt100]
 prev_msg = ''
 sendAll = False
 flushData = False
 dataDelay = 5
-changed = [" "]*63
+
 allData = {
   "time": 0.0,
   "tt511": 0.0,
@@ -93,7 +93,11 @@ allData = {
   "pmp204": 0.0,
   "fcv141": 0.0,
   "fcv205": 0.0,
-  "fcv549": 0.0
+  "fcv549": 0.0,
+  "fcv141FeedBack": 0.0,
+  "fcv205FeedBack": 0.0,
+  "pt100": 0.0
+  
 }
 try:
   ser = serial.Serial(
@@ -118,13 +122,13 @@ class sendDataProgram:
   def run(self):
     def publish(client,topic):
       global allData
-      global changed
       global flushData
-      global all
+      global sendAll
       global dataDelay
       while True:
-        time.sleep(0.5)
+        changed = [" "]*len(allData)
         if passed:
+          time.sleep(0.2)
           raw=ser.readline()
           print(raw)
           if len(raw) < 2:
@@ -139,7 +143,7 @@ class sendDataProgram:
             parsed[-1].replace(bytes('\r\n','utf-8'),bytes('','utf-8'))
             try:
               data = [float(i) for i in parsed]
-              if len(data) == 63:
+              if len(data) == len(allData):
                 i = 0 
                 j = 0
                 msg = "{"
@@ -173,18 +177,11 @@ class sendDataProgram:
                         time.sleep(0.1)
                         msg = "{"
                     i = i + 1
-                  else:
-                    changed = [" "]*63
-                    break
-                  
-                  
-                time.sleep(dataDelay)
                 ser.reset_input_buffer()
+                time.sleep(dataDelay)
                 
             except Exception as e:
               print(e)
-          else:
-            pass
       
     global client
 
