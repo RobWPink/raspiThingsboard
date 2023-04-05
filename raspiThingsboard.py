@@ -29,7 +29,7 @@ prev_msg = ''
 sendAll = False
 flushData = False
 dataDelay = 5
-
+allCnt = 0
 allData = {
   "time": 0.0,
   "tt511": 0.0,
@@ -126,6 +126,7 @@ class sendDataProgram:
       global flushData
       global sendAll
       global dataDelay
+      global allCnt
       while True:
         changed = [" "]*len(allData)
         if passed:
@@ -148,6 +149,12 @@ class sendDataProgram:
                 i = 0 
                 j = 0
                 msg = "{"
+                if allCnt > 11:
+                  allCnt = 0
+                  sendAll = True
+                else:
+                  sendAll = False
+                  allCnt = allCnt + 1
                 for key in allData:
                   if flushData:
                     ser.flushInput()
