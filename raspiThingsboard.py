@@ -106,6 +106,7 @@ try:
     parity=serial.PARITY_NONE,
     stopbits=serial.STOPBITS_ONE,
     bytesize=serial.EIGHTBITS,
+    dsrdtr=True,
     #timeout=none
   )
   passed = True
@@ -278,6 +279,7 @@ def main():
             parity=serial.PARITY_NONE,
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS,
+            dsrdtr=True,
             #timeout=none
           )
           passed = True
