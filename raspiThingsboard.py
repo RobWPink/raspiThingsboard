@@ -29,7 +29,6 @@ prev_msg = ''
 sendAll = False
 flushData = False
 dataDelay = 5
-changed = [" "]*63
 allData = {
   "time": 0.0,
   "tt511": 0.0,
@@ -93,8 +92,13 @@ allData = {
   "pmp204": 0.0,
   "fcv141": 0.0,
   "fcv205": 0.0,
-  "fcv549": 0.0
+  "fcv549": 0.0,
+  "fcv141FeedBack": 0.0,
+  "fcv205FeedBack": 0.0,
+  "pt100": 0.0,
 }
+#print(len(allData))
+#print(allData)
 try:
   ser = serial.Serial(
     port='/dev/ttyACM0',
@@ -102,7 +106,7 @@ try:
     parity=serial.PARITY_NONE,
     stopbits=serial.STOPBITS_ONE,
     bytesize=serial.EIGHTBITS,
-    dsrdtr=True,
+#    dsrdtr=True,
     #timeout=none
   )
   passed = True
@@ -119,9 +123,8 @@ class sendDataProgram:
   def run(self):
     def publish(client,topic):
       global allData
-      global changed
       global flushData
-      global all
+      global sendAll
       global dataDelay
       while True:
         time.sleep(0.5)
@@ -140,10 +143,13 @@ class sendDataProgram:
             parsed[-1].replace(bytes('\r\n','utf-8'),bytes('','utf-8'))
             try:
               data = [float(i) for i in parsed]
-              if len(data) == 63:
-                i = 0 
+ #             print(len(data))
+ #             print(len(allData))
+              if len(data) == len(allData):
+                i = 0
                 j = 0
                 msg = "{"
+                changed = [" "] * len(allData)
                 for key in allData:
                   if flushData:
                     ser.flushInput()
@@ -175,7 +181,7 @@ class sendDataProgram:
                         msg = "{"
                     i = i + 1
                   else:
-                    changed = [" "]*63
+                    changed = [" "] * len(allData)
                     break
                   
                   
@@ -282,7 +288,7 @@ def main():
             parity=serial.PARITY_NONE,
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS,
-            dsrdtr=True,
+ #           dsrdtr=True,
             #timeout=none
           )
           passed = True
