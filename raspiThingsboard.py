@@ -29,6 +29,7 @@ prev_msg = ''
 sendAll = False
 flushData = False
 dataDelay = 5
+allCnt = 0
 allData = {
   "time": 0.0,
   "tt511": 0.0,
@@ -126,6 +127,7 @@ class sendDataProgram:
       global flushData
       global sendAll
       global dataDelay
+      global allCnt
       while True:
         time.sleep(0.5)
         if passed:
@@ -136,8 +138,8 @@ class sendDataProgram:
           elif 'OK'.encode() in raw:
             ser.flush()
             time.sleep(1)
-            print('inputting "sql"')
-            ser.write(bytes('sql','utf-8'))
+            #print('inputting "sql"')
+            #ser.write(bytes('sql','utf-8'))
           elif ','.encode() in raw:
             parsed = raw.split(','.encode())
             parsed[-1].replace(bytes('\r\n','utf-8'),bytes('','utf-8'))
@@ -149,6 +151,12 @@ class sendDataProgram:
                 i = 0
                 j = 0
                 msg = "{"
+                if allCnt > 10:
+                  allCnt = 0
+                  sendAll = True
+                else:
+                  allCnt = allCnt + 1
+                  sendAll = False
                 changed = [" "] * len(allData)
                 for key in allData:
                   if flushData:
