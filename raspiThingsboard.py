@@ -24,7 +24,7 @@ try:
 except:
   password = 'test1234'
 
-#[time,tt511,tt512,burnerTemp,tt513,tt514,tt407,tt408,tt410,tt411,tt430,tt441,tt442,tt443,tt444,tt445,tt446,tt447,tt448,tt449,tubeMean,tubeMax,tt142,tt301,tt303,tt306,tt313,tt319,bmmAlarm,bmmProof,estop,greenButton,greenPilot,amberButton,amberPilot,psh,psl,zsl,bmmRun,xv501,xv217,xv474,xv1100,xv122,twv308,twv310,fcv134FeedBack,bl508FeedBack,pmp204FeedBack,fcv549FeedBack,pt654,pt304,pt420,pt383,pt318,ft132,ft219,bl508,fcv134,pmp204,fcv141,fcv205,fcv549,fcv141FeedBack,fcv205FeedBack,pt100]
+#[time,tt511,tt512,burnerTemp,tt513,tt514,tt407,tt408,tt410,tt411,tt430,tt441,tt442,tt443,tt444,tt445,tt446,tt447,tt448,tt449,tubeMean,tubeMax,tt142,tt301,tt303,tt306,tt313,tt319,bmmAlarm,bmmProof,estop,greenButton,greenPilot,amberButton,amberPilot,psh,psl,zsl,bmmRun,xv501,xv217,xv474,xv1100,xv122,twv308,twv310,fcv134FeedBack,bl508FeedBack,pmp204FeedBack,fcv549FeedBack,pt654,pt304,pt420,pt383,pt318,ft132,ft219,bl508,fcv134,pmp204,fcv141,fcv205,fcv549]
 prev_msg = ''
 sendAll = False
 flushData = False
@@ -96,9 +96,10 @@ allData = {
   "fcv549": 0.0,
   "fcv141FeedBack": 0.0,
   "fcv205FeedBack": 0.0,
-  "pt100": 0.0
-  
+  "pt100": 0.0,
 }
+#print(len(allData))
+#print(allData)
 try:
   ser = serial.Serial(
     port='/dev/ttyACM0',
@@ -106,7 +107,7 @@ try:
     parity=serial.PARITY_NONE,
     stopbits=serial.STOPBITS_ONE,
     bytesize=serial.EIGHTBITS,
-    dsrdtr=True,
+#    dsrdtr=True,
     #timeout=none
   )
   passed = True
@@ -128,9 +129,8 @@ class sendDataProgram:
       global dataDelay
       global allCnt
       while True:
-        changed = [" "]*len(allData)
+        time.sleep(0.5)
         if passed:
-          time.sleep(0.2)
           raw=ser.readline()
           print(raw)
           if len(raw) < 2:
@@ -138,23 +138,26 @@ class sendDataProgram:
           elif 'OK'.encode() in raw:
             ser.flush()
             time.sleep(1)
-            print('inputting "sql"')
-            ser.write(bytes('sql','utf-8'))
+            #print('inputting "sql"')
+            #ser.write(bytes('sql','utf-8'))
           elif ','.encode() in raw:
             parsed = raw.split(','.encode())
             parsed[-1].replace(bytes('\r\n','utf-8'),bytes('','utf-8'))
             try:
               data = [float(i) for i in parsed]
+ #             print(len(data))
+ #             print(len(allData))
               if len(data) == len(allData):
-                i = 0 
+                i = 0
                 j = 0
                 msg = "{"
-                if allCnt > 11:
+                if allCnt > 10:
                   allCnt = 0
                   sendAll = True
                 else:
-                  sendAll = False
                   allCnt = allCnt + 1
+                  sendAll = False
+                changed = [" "] * len(allData)
                 for key in allData:
                   if flushData:
                     ser.flushInput()
@@ -185,11 +188,18 @@ class sendDataProgram:
                         time.sleep(0.1)
                         msg = "{"
                     i = i + 1
-                ser.reset_input_buffer()
+                  else:
+                    changed = [" "] * len(allData)
+                    break
+                  
+                  
                 time.sleep(dataDelay)
+                ser.reset_input_buffer()
                 
             except Exception as e:
               print(e)
+          else:
+            pass
       
     global client
 
@@ -286,7 +296,7 @@ def main():
             parity=serial.PARITY_NONE,
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS,
-            dsrdtr=True,
+ #           dsrdtr=True,
             #timeout=none
           )
           passed = True
