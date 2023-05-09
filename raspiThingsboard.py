@@ -3,7 +3,7 @@ import sqlite3 as lite
 from threading import Thread
 import sys, time, serial, struct,re
 from datetime import datetime
-
+import os
 host = '34.236.51.120'
 port = 1883
 telemetry = 'v1/devices/me/telemetry'
@@ -59,24 +59,24 @@ allData = {
   "tt306": 0.0,
   "tt313": 0.0,
   "tt319": 0.0,
-  "bmmAlarm": 0.0,
-  "bmmProof": 0.0,
-  "estop": 0.0,
-  "greenButton": 0.0,
-  "greenPilot": 0.0,
-  "amberButton": 0.0,
-  "amberPilot": 0.0,
-  "psh": 0.0,
-  "psl": 0.0,
-  "zsl": 0.0,
-  "bmmRun": 0.0,
-  "xv501": 0.0,
-  "xv217": 0.0,
-  "xv474": 0.0,
-  "xv1100": 0.0,
-  "xv122": 0.0,
-  "twv308": 0.0,
-  "twv310": 0.0,
+  "bmmAlarm": 0,
+  "bmmProof": 0,
+  "estop": 0,
+  "greenButton": 0,
+  "greenPilot": 0,
+  "amberButton": 0,
+  "amberPilot": 0,
+  "psh": 0,
+  "psl": 0,
+  "zsl": 0,
+  "bmmRun": 0,
+  "xv501": 0,
+  "xv217": 0,
+  "xv474": 0,
+  "xv1100": 0,
+  "xv122": 0,
+  "twv308": 0,
+  "twv310": 0,
   "fcv134FeedBack": 0.0,
   "bl508FeedBack": 0.0,
   "pmp204FeedBack": 0.0,
@@ -97,6 +97,10 @@ allData = {
   "fcv141FeedBack": 0.0,
   "fcv205FeedBack": 0.0,
   "pt100": 0.0,
+  "psaON":0,
+  "psaReady":0,
+  "psaACK":0,
+  "psaFail":0,
 }
 #print(len(allData))
 #print(allData)
@@ -129,7 +133,6 @@ class sendDataProgram:
       global dataDelay
       global allCnt
       while True:
-        time.sleep(0.5)
         if passed:
           raw=ser.readline()
           print(raw)
@@ -138,16 +141,22 @@ class sendDataProgram:
           elif 'OK'.encode() in raw:
             ser.flush()
             time.sleep(1)
-            #print('inputting "sql"')
-            #ser.write(bytes('sql','utf-8'))
+          elif ';'.encode() in raw:
+            result = client.publish(topic, "\"errorCode\":\""+raw.decode+"\"")
+            status = result[0]
+            if not status == 0:
+              print(f"Failed to send message to topic {topic}")
+            else:
+              time.sleep(0.1)
+
+            
           elif ','.encode() in raw:
             parsed = raw.split(','.encode())
             parsed[-1].replace(bytes('\r\n','utf-8'),bytes('','utf-8'))
             try:
               data = [float(i) for i in parsed]
- #             print(len(data))
- #             print(len(allData))
               if len(data) == len(allData):
+                time.sleep(0.5)
                 i = 0
                 j = 0
                 msg = "{"
@@ -192,8 +201,6 @@ class sendDataProgram:
                     changed = [" "] * len(allData)
                     break
                   
-                  
-                time.sleep(dataDelay)
                 ser.reset_input_buffer()
                 
             except Exception as e:
@@ -214,64 +221,76 @@ class receiveDataProgram:
     self._running = False  
   
   def run(self):
-    
-    def subscribe(client: mqtt_client):
-      def on_message(client, userdata, msg):
-        global sendAll
-        global flushData
-        global dataDelay
-        if passed:
-          try:
-            received = msg.payload.decode()
-            print(received)
-            output = ""
-            if 'ctl' in received:
-              flushData = True
-              received = received.replace("ctl","")
-              number = re.search('{".*":(.+?)}', received).group(1)
-              name = re.search('{"(.+?)":.*}', received).group(1)
-              if name == "bmmRun":
-                name = "bmm"
-              if 'false' in number or 'true' in number:
-                output = name
-              else:
-                output = name +" "+ number
-            elif "legacy" in received and not "deleted" in received:
-              if "all" in received:
-                sendAll = not sendAll
+    try:
+      def subscribe(client: mqtt_client):
+        def on_message(client, userdata, msg):
+          global sendAll
+          global flushData
+          global dataDelay
+          if passed:
+            try:
+              received = msg.payload.decode()
+              print(received)
+              output = ""
+              if 'ctl' in received:
+                flushData = True
+                received = received.replace("ctl","")
+                number = re.search('{".*":(.+?)}', received).group(1)
+                name = re.search('{"(.+?)":.*}', received).group(1)
+                if name == "bmmRun":
+                  name = "bmm"
+                
+                if name == "psaON":
+                  if 'false' in number:
+                    name = "PSA_OFF"
+                  elif 'true' in number:
+                    name = "PSA_ON"
+                if 'false' in number or 'true' in number:
+                  output = name
+                else:
+                  output = name +" "+ number
+              elif "legacy" in received and not "deleted" in received:
+                if "all" in received:
+                  sendAll = not sendAll
+                  output = ''
+                else:
+                  output = re.search('{"legacy":"(.+?)"}', received).group(1)
+              elif "dataDelay" in received and not "deleted" in received:
+                dataDelay = int(re.search('{".*":(.+?)}', received).group(1))
                 output = ''
-              else:
-                output = re.search('{"legacy":"(.+?)"}', received).group(1)
-            elif "dataDelay" in received and not "deleted" in received:
-              dataDelay = int(re.search('{".*":(.+?)}', received).group(1))
-              output = ''
-            elif "deleted" in received:
-              output = ''
-
-            if not output == '':
-              print(output)
-              ser.write(bytes(output,'utf-8'))
-              #print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
-          except Exception as e:
-            print(e)
-      client.subscribe(attributes)
-      client.on_message = on_message
-    subscribe(client)
+              elif "deleted" in received:
+                output = ''
+  
+              if not output == '':
+                print(output)
+                ser.write(bytes(output,'utf-8'))
+                #print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+            except Exception as e:
+              print(e)
+        client.subscribe(attributes)
+        client.on_message = on_message
+      subscribe(client)
+    except Exception as e:
+      print(e)
+      
     #client.loop_forever() #this is commented since two loops cannot happen even in different threads, using the other loop rn
 
 def connect_mqtt():
   global client
-  def on_connect(client, userdata, flags, rc):
-    if rc == 0:
-      print("Connected to MQTT Host!")
-    else:
-      print("Failed to connect, return code %d\n", rc)
-
-  client = mqtt_client.Client(clientId)
-  client.username_pw_set(username, password)
-  client.on_connect = on_connect
-  client.connect(host, port)
-  return client
+  try:
+    def on_connect(client, userdata, flags, rc):
+      if rc == 0:
+        print("Connected to MQTT Host!")
+      else:
+        print("Failed to connect, return code %d\n", rc)
+  
+    client = mqtt_client.Client(clientId)
+    client.username_pw_set(username, password)
+    client.on_connect = on_connect
+    client.connect(host, port)
+    return client
+  except Exception as e:
+    print(e)
 
 def main():
   
@@ -288,26 +307,35 @@ def main():
     receiveDataThread = Thread(target=receiveData.run) 
     receiveDataThread.start()
     while(1):
-      while not passed:
-        try:
-          ser = serial.Serial(
-            port='/dev/ttyUSB0',
-            baudrate = 9600,
-            parity=serial.PARITY_NONE,
-            stopbits=serial.STOPBITS_ONE,
-            bytesize=serial.EIGHTBITS,
- #           dsrdtr=True,
-            #timeout=none
-          )
-          passed = True
-        except serial.serialutil.SerialException or FileNotFoundError:
-          passed = False
-      while passed:
-        try:
-          pass
-        except serial.serialutil.SerialException or FileNotFoundError:
-          passed = false
-        
+      if not "200 OK" in os.popen('curl -Is  http://www.google.com | head -n 1').read():
+        print("cannot connect to internet waiting 10 seconds then trying again")
+        time.sleep(10)
+      else:
+        while(1):
+          try:
+            while not passed:
+              try:
+                ser = serial.Serial(
+                  port='/dev/ttyUSB0',
+                  baudrate = 9600,
+                  parity=serial.PARITY_NONE,
+                  stopbits=serial.STOPBITS_ONE,
+                  bytesize=serial.EIGHTBITS,
+       #           dsrdtr=True,
+                  #timeout=none
+                )
+                passed = True
+              except serial.serialutil.SerialException or FileNotFoundError:
+                passed = False
+            while passed:
+              try:
+                pass
+              except serial.serialutil.SerialException or FileNotFoundError:
+                passed = false
+          except:
+            break
+              
+      
       
   except KeyboardInterrupt:
     print('Interrupted')
@@ -316,5 +344,6 @@ def main():
     print("Goodbye")
 if __name__ == '__main__':
     main()
+
 
 
