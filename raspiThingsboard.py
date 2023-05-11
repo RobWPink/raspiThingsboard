@@ -25,11 +25,12 @@ except:
   password = 'test1234'
 
 #[time,tt511,tt512,burnerTemp,tt513,tt514,tt407,tt408,tt410,tt411,tt430,tt441,tt442,tt443,tt444,tt445,tt446,tt447,tt448,tt449,tubeMean,tubeMax,tt142,tt301,tt303,tt306,tt313,tt319,bmmAlarm,bmmProof,estop,greenButton,greenPilot,amberButton,amberPilot,psh,psl,zsl,bmmRun,xv501,xv217,xv474,xv1100,xv122,twv308,twv310,fcv134FeedBack,bl508FeedBack,pmp204FeedBack,fcv549FeedBack,pt654,pt304,pt420,pt383,pt318,ft132,ft219,bl508,fcv134,pmp204,fcv141,fcv205,fcv549]
-prev_msg = ''
+prev_cmd = ''
 sendAll = False
 flushData = False
 dataDelay = 5
 allCnt = 0
+allowed_commands = ("bl508","bmmRun","fcv134","fcv141","fcv205","fcv549","legacy","pmp204","twv308","twv310","xv501","xv217","xv474","xv1100","xv122","psaReady","psaACK","psaON")
 allData = {
   "time": 0.0,
   "tt511": 0.0,
@@ -232,39 +233,44 @@ class receiveDataProgram:
               received = msg.payload.decode()
               print(received)
               output = ""
+              if 'Invalid entry' in received:
+                received = prev_cmd
+                print("serialSend error, retrying")
               if 'ctl' in received:
                 flushData = True
                 received = received.replace("ctl","")
                 number = re.search('{".*":(.+?)}', received).group(1)
                 name = re.search('{"(.+?)":.*}', received).group(1)
-                if name == "bmmRun":
-                  name = "bmm"
-                
-                if name == "psaON":
-                  if 'false' in number:
-                    name = "PSA_OFF"
-                  elif 'true' in number:
-                    name = "PSA_ON"
-                if 'false' in number or 'true' in number:
-                  output = name
-                else:
-                  output = name +" "+ number
-              elif "legacy" in received and not "deleted" in received:
-                if "all" in received:
-                  sendAll = not sendAll
+                if name in allowed_commands:
+                  if name == "bmmRun":
+                    name = "bmm"
+                  
+                  if name == "psaON":
+                    if 'false' in number:
+                      name = "PSA_OFF"
+                    elif 'true' in number:
+                      name = "PSA_ON"
+                  if 'false' in number or 'true' in number:
+                    output = name
+                  else:
+                    output = name +" "+ number
+                elif "legacy" in received and not "deleted" in received:
+                  if "all" in received:
+                    sendAll = not sendAll
+                    output = ''
+                  else:
+                    output = re.search('{"legacy":"(.+?)"}', received).group(1)
+                elif "dataDelay" in received and not "deleted" in received:
+                  dataDelay = int(re.search('{".*":(.+?)}', received).group(1))
                   output = ''
-                else:
-                  output = re.search('{"legacy":"(.+?)"}', received).group(1)
-              elif "dataDelay" in received and not "deleted" in received:
-                dataDelay = int(re.search('{".*":(.+?)}', received).group(1))
-                output = ''
-              elif "deleted" in received:
-                output = ''
-  
-              if not output == '':
-                print(output)
-                ser.write(bytes(output,'utf-8'))
-                #print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+                elif "deleted" in received:
+                  output = ''
+    
+                if not output == '':
+                  print(output)
+                  prev_cmd = output
+                  ser.write(bytes(output,'utf-8'))
+                  #print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
             except Exception as e:
               print(e)
         client.subscribe(attributes)
