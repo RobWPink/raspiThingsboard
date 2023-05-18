@@ -106,6 +106,7 @@ allData = {
   "psaReady":0,
   "psaACK":0,
   "psaFail":0,
+  "autotwv":0,
 }
 #print(len(allData))
 #print(allData)
