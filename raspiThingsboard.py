@@ -181,15 +181,17 @@ def main():
             parity=serial.PARITY_NONE,
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS,
-          )
-          if "200 OK" in os.popen('curl -Is  http://www.google.com | head -n 1').read():
+          ) 
+          if "20" in os.popen('curl -Is  https://www.google.com | head -n 1').read():
             passed = True
             os.execl(sys.executable, sys.executable, *sys.argv)
+          else:
+            print(os.popen('curl -Is  https://www.google.com | head -n 1').read())
         except serial.serialutil.SerialException or FileNotFoundError:
           passed = False
       
       while passed:
-        if not "200 OK" in os.popen('curl -Is  http://www.google.com | head -n 1').read():
+        if not "20" in os.popen('curl -Is  https://www.google.com | head -n 1').read():
           passed = False
           print("connection error")
           continue
