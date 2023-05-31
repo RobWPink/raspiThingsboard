@@ -96,7 +96,7 @@ allData = {
     "autotwv":0,
   }
 allowed_commands = ("bl508","bmmRun","fcv134","fcv141","fcv205","fcv549","legacy","pmp204","twv308","twv310","xv501","xv217","xv474","xv1100","xv122","psaReady","psaACK","psaON")
-
+subCheckTime = 0
 try:
   ser = serial.Serial(
     port='/dev/ttyACM0',
@@ -114,6 +114,8 @@ def on_message_attributes(client, userdata, msg):
   global flushData
   global sendAll
   global ser
+  global subCheckTime
+  print('###########################')
   print('Received: ', str(msg.payload.decode('utf-8')))
   try:
     received = msg.payload.decode()
@@ -121,7 +123,10 @@ def on_message_attributes(client, userdata, msg):
     if 'Invalid entry' in received:
       received = prev_cmd
       print("serialSend error, retrying")
-    if 'ctl' in received:
+    if "checkSubscription" in received:
+      #subCheck = re.search('{".*":(.+?)}', received).group(1)
+      subCheckTime = time.time()
+    else if 'ctl' in received:
       flushData = True
       received = received.replace("ctl","")
       number = re.search('{".*":(.+?)}', received).group(1)
@@ -149,11 +154,12 @@ def on_message_attributes(client, userdata, msg):
         output = ''
 
       if not output == '':
-        print(output)
+        print("Command: " + output)
         prev_cmd = output
         ser.write(bytes(output,'utf-8'))
   except Exception as e:
     print(e)
+  print('###########################')
 
 client = mqtt.Client(username)
 client.username_pw_set(username, password)
@@ -191,6 +197,9 @@ def main():
           passed = False
       
       while passed:
+        if time.time() > (subCheckTime + 240):
+          print("\nSubscription Failure, restarting program...\n")
+          os.execl(sys.executable, sys.executable, *sys.argv)
         if not "20" in os.popen('curl -Is  https://www.google.com | head -n 1').read():
           passed = False
           print("connection error")
