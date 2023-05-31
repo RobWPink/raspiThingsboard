@@ -126,7 +126,7 @@ def on_message_attributes(client, userdata, msg):
     if "checkSubscription" in received:
       #subCheck = re.search('{".*":(.+?)}', received).group(1)
       subCheckTime = time.time()
-    else if 'ctl' in received:
+    elif 'ctl' in received:
       flushData = True
       received = received.replace("ctl","")
       number = re.search('{".*":(.+?)}', received).group(1)
