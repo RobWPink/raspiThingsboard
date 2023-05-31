@@ -96,7 +96,7 @@ allData = {
     "autotwv":0,
   }
 allowed_commands = ("bl508","bmmRun","fcv134","fcv141","fcv205","fcv549","legacy","pmp204","twv308","twv310","xv501","xv217","xv474","xv1100","xv122","psaReady","psaACK","psaON")
-subCheckTime = 0
+subCheckTime = time.time()
 try:
   ser = serial.Serial(
     port='/dev/ttyACM0',
