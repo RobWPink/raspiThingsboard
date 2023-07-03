@@ -1,23 +1,25 @@
 import paho.mqtt.client as mqtt
-#import sqlite3 as lite
-import sys, time, serial, struct,re,os,subprocess
-from datetime import datetime
+import time, logging,sys,struct,re,os,subprocess,serial
+import logging.handlers as handlers
+import os.path
+import threading
+try:
+  username = sys.argv[1]
+except:
+  print("Missing MQTT username argument!")
+  sys.exit(1)
+  
+try:
+  serialDevice = sys.argv[2]
+except:
+  serialDevice = '/dev/ttyACM0'
+
 host = '34.236.51.120'
 port = 1883
 telemetry = 'v1/devices/me/telemetry'
 attributes = 'v1/devices/me/attributes'
-password = "test1234"
-try:
-  username = sys.argv[1]
-except:
-  print("Missing username argument!")
-  sys.exit(1)
-
-prev_cmd = ""
-flushData = False
-passed = False
-allCnt = 0
-sendAll = False
+password = 'test1234'
+allowed_commands = ("bl508","bmmRun","fcv134","fcv141","fcv205","fcv549","legacy","pmp204","twv308","twv310","xv501","xv217","xv474","xv1100","xv122","psaReady","psaACK","psaON")
 allData = {
     "time": 0.0,
     "tt511": 0.0,
@@ -95,37 +97,186 @@ allData = {
     "psaFail":0,
     "autotwv":0,
   }
-allowed_commands = ("bl508","bmmRun","fcv134","fcv141","fcv205","fcv549","legacy","pmp204","twv308","twv310","xv501","xv217","xv474","xv1100","xv122","psaReady","psaACK","psaON")
-subCheckTime = time.time()
-try:
-  ser = serial.Serial(
-    port='/dev/ttyACM0',
-    baudrate = 9600,
-    parity=serial.PARITY_NONE,
-    stopbits=serial.STOPBITS_ONE,
-    bytesize=serial.EIGHTBITS,
-  )
-  passed = True
-except serial.serialutil.SerialException or  FileNotFoundError:
-  passed = False
+log = logging.getLogger("reformer")
+log.setLevel(logging.DEBUG)
+
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+log.addHandler(handler)
+
+rotateHandler = handlers.RotatingFileHandler("/home/defaultUser/reformerLog.log", maxBytes=200000,backupCount=5)
+rotateHandler.setLevel(logging.INFO)
+rotateFormatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+rotateHandler.setFormatter(rotateFormatter)
+log.addHandler(rotateHandler)
+
+flushData = False
+#Check for existance of serial device
+# if not os.path.isfile(serialDevice):
+  # log.critical("Serial Device at " + serialDevice + " was not found.")
+  # sys.exit(1)
+
+def serialConnect():
+  #check if we can connect to device
+  serialTimeout = 0
+  global ser
+  while True:
+    try:
+      ser = serial.Serial(
+        port=serialDevice,
+        baudrate = 9600,
+        parity=serial.PARITY_NONE,
+        stopbits=serial.STOPBITS_ONE,
+        bytesize=serial.EIGHTBITS,
+      )
+      break
+    except serial.serialutil.SerialException or FileNotFoundError:
+      log.error("Unable to connect to serial device. Retrying...")
+      time.sleep(1)
+      serialTimeout = serialTimeout + 1
+      if serialTimeout > 10:
+        log.critical("Unable to connect to serial device. Exiting.")
+        client.loop_stop()
+        sys.exit(1)
+
+
+#########################################################################################################################################################
+#########################################################################################################################################################
+#########################################################################################################################################################
+def main():
+  serialConnect()
+  global ser
+  global flushData
+  try:
+    allCnt = 0
+    while True:
+      try:
+        raw=ser.readline()# grap raw serial data
+        log.debug(raw)
+        if len(raw) < 2: # Make sure its actually data
+          pass
+          
+        elif 'OK'.encode() in raw:
+          ser.flush()
+          time.sleep(1)
+          
+        elif ','.encode() in raw: # Check if we are receiving listed data
+          parsed = raw.split(','.encode()) # convert sting list into python list of strings
+          parsed[-1].replace(bytes('\r\n','utf-8'),bytes('','utf-8')) # chop off extra special chars
+          try:
+            data = [float(i) for i in parsed] # Convert all stringed numbers into floats
+            if len(data) == len(allData): # Only process if we have ALL of the data
+              time.sleep(0.5)
+              i = 0
+              j = 0
+              msg = "{"
+              if allCnt > 10: # Every 10 messages send ALL data 
+                allCnt = 0
+              else:
+                allCnt = allCnt + 1
+              changed = [" "] * len(allData) # make list of all data that has changed since last loop
+              for key in allData:
+                if flushData:
+                  ser.flushInput()
+                  ser.flushOutput()
+                  time.sleep(0.1)
+                  flushData = False
+                  break
+                if not allData[key] == data[i] or allCnt == 10:
+                  allData[key] = data[i]
+                  changed[j] = key
+                  j = j + 1
+                i = i + 1
+              i = 0
+              j = 0
+              for changedKey in changed:
+                if not changedKey == " ": 
+                  msg = msg + "\"" + changedKey + "\":" + str(allData[changedKey]) + ","
+                  if i % 4 == 0 or changed[i+1] == " ":
+                    msg = msg[:-1]
+                    msg = msg + '}'
+                    log.debug(msg)
+                    result = client.publish(telemetry, msg)
+                    status = result[0]
+                    if not status == 0:
+                      log.warning(f"Failed to send message to topic {telemetry}")
+                      msg = "{"
+                    else:
+                      time.sleep(0.1)
+                      msg = "{"
+                  i = i + 1
+                else:
+                  changed = [" "] * len(allData)
+                  break
+                
+              ser.reset_input_buffer()
+              
+          except Exception as e:
+            log.warning("Parsing Failure: " + str(e))
+      except serial.serialutil.SerialException or FileNotFoundError:
+        serialConnect()
+  except KeyboardInterrupt:
+    log.info('Manual User Shutdown Initiatated')
+    client.loop_stop()
+    sys.exit(0)
+    
+    
+    
+    
+    
+
+#########################################################################################################################################################
+#########################################################################################################################################################
+#########################################################################################################################################################
+
+
+
+#########################################################################################################################################################
+# Daemon for checking internet and serial connection
+def connectionCheck(serialPort, interval=1):
+  #Check for internet connection
+  internetCnt = 0
+  while True:
+    if "20" in os.popen('curl -Is  https://www.google.com | head -n 1').read():
+      internetCnt = 0
+    else:
+      time.sleep(1)
+      internetCnt = internetCnt + 1
+    if internetCnt > 10:
+      log.critical("Unable to connect to internet. Error Code:" + str(os.popen('curl -Is  https://www.google.com | head -n 1').read()) +". Exiting.")
+      client.loop_stop()
+      sys.exit(1)
+    #continually check for existance of serial device
+    # if not os.path.isfile(serialDevice):
+      # log.critical("Serial Device at " + serialDevice + " has been disconnected. Exiting.")
+      # client.loop_stop()
+      # sys.exit(1)
+      
+    time.sleep(interval)
+
+#########################################################################################################################################################
+# The callback for when the client receives a CONNACK response from the server.
+def on_connect(client, userdata, flags, rc):
+  log.info("Connected with result code "+str(rc))
   
-def on_message_attributes(client, userdata, msg):
+  # Subscribing in on_connect() means that if we lose the connection and
+  # reconnect then subscriptions will be renewed.
+  client.subscribe(attributes,qos=1)
+
+#########################################################################################################################################################
+# The callback for when a PUBLISH message is received from the server.
+def on_message(client, userdata, msg):
   global prev_cmd
   global flushData
-  global sendAll
-  global ser
-  global subCheckTime
-  print('###########################')
-  print('Received: ', str(msg.payload.decode('utf-8')))
+  log.info("Received:"+str(msg.payload.decode()))
   try:
     received = msg.payload.decode()
     output = ""
     if 'Invalid entry' in received:
       received = prev_cmd
-      print("serialSend error, retrying")
-    if "checkSubscription" in received:
-      #subCheck = re.search('{".*":(.+?)}', received).group(1)
-      subCheckTime = time.time()
+      log.warning("serialSend error, retrying")
     elif 'ctl' in received:
       flushData = True
       received = received.replace("ctl","")
@@ -140,140 +291,79 @@ def on_message_attributes(client, userdata, msg):
             name = "PSA_OFF"
           elif 'true' in number:
             name = "PSA_ON"
+
         if 'false' in number or 'true' in number:
           output = name
+          
+        elif "legacy" in received and not "deleted" in received:
+          output = re.search('{"legacy":"(.+?)"}', received).group(1)
+          
         else:
           output = name +" "+ number
-      elif "legacy" in received and not "deleted" in received:
-        if "all" in received:
-          sendAll = not sendAll
-          output = ''
-        else:
-          output = re.search('{"legacy":"(.+?)"}', received).group(1)
       elif "deleted" in received:
         output = ''
 
       if not output == '':
-        print("Command: " + output)
+        log.info("Fowarding command: " + output)
         prev_cmd = output
         ser.write(bytes(output,'utf-8'))
   except Exception as e:
-    print(e)
-  print('###########################')
+    log.error(e)
+
+#########################################################################################################################################################
+# The callback for when we receive an PUBACK from server
+def on_publish(client,userdata,mid):
+  log.debug("Successfully published.")
+#########################################################################################################################################################
+# The callback for when we receive an SUBACK from server
+def on_subscribe(client,userdata,mid,granted_qos):
+  log.info("Subscription confirmed.")
+
+#########################################################################################################################################################
+# The callback for when we disconnect unintentionally 
+def on_disconnect(client, userdata, rc):
+  FIRST_RECONNECT_DELAY = 1
+  RECONNECT_RATE = 2
+  MAX_RECONNECT_COUNT = 12
+  MAX_RECONNECT_DELAY = 60
+  log.warning("Disconnected with result code: %s", rc)
+  reconnect_count, reconnect_delay = 0, FIRST_RECONNECT_DELAY
+  while reconnect_count < MAX_RECONNECT_COUNT:
+    log.info("Reconnecting in %d seconds...", reconnect_delay)
+    time.sleep(reconnect_delay)
+    try:
+      client.reconnect()
+      log.info("Reconnected successfully!")
+      return
+    except Exception as err:
+      log.error("%s. Reconnect failed. Retrying...", err)
+    
+    reconnect_delay *= RECONNECT_RATE
+    reconnect_delay = min(reconnect_delay, MAX_RECONNECT_DELAY)
+    reconnect_count += 1
+  log.critical("Reconnect failed after %s attempts. Exiting...", reconnect_count)
+  client.loop_stop()
+  sys.exit(1)
+
+#########################################################################################################################################################
+
+conn_controller = threading.Thread(target=connectionCheck, args=(serialDevice, 1,))
+conn_controller.setDaemon(True)
+conn_controller.start()
 
 client = mqtt.Client(username)
 client.username_pw_set(username, password)
-client.connect(host, port)
-#client.on_publish = on_publish
-client.message_callback_add(attributes, on_message_attributes)
-client.connect('34.236.51.120', 1883)
+client.enable_logger(log)
+#client.will_set(telemetry, payload=None, qos=1, retain=True)
+#client.reconnect_delay_set(min_delay=1, max_delay=120)
+client.on_connect = on_connect
+client.on_message = on_message
+client.on_publish = on_publish
+client.on_subscribe = on_subscribe
+client.on_disconnect = on_disconnect
+client.connect(host, port, 60)
 client.loop_start()
-client.subscribe(attributes)
+#client.publish(telemetry, '{"tester":"84834"}',qos=1,retain=True)
 
-def main():
-  global passed
-  global allData
-  global client
-  global allCnt
-  global flushData
-  global ser
-  try:
-    while True:
-      while not passed:
-        try:
-          ser = serial.Serial(
-            port='/dev/ttyACM0',
-            baudrate = 9600,
-            parity=serial.PARITY_NONE,
-            stopbits=serial.STOPBITS_ONE,
-            bytesize=serial.EIGHTBITS,
-          ) 
-          if "20" in os.popen('curl -Is  https://www.google.com | head -n 1').read():
-            passed = True
-            os.execl(sys.executable, sys.executable, *sys.argv)
-          else:
-            print(os.popen('curl -Is  https://www.google.com | head -n 1').read())
-        except serial.serialutil.SerialException or FileNotFoundError:
-          passed = False
-      
-      while passed:
-        if time.time() > (subCheckTime + 240):
-          print("\nSubscription Failure, restarting program...\n")
-          os.execl(sys.executable, sys.executable, *sys.argv)
-        if not "20" in os.popen('curl -Is  https://www.google.com | head -n 1').read():
-          passed = False
-          print("connection error")
-          continue
-        try:
-          raw=ser.readline()
-          print(raw)
-          if len(raw) < 2:
-            print(0)
-            
-          elif 'OK'.encode() in raw:
-            ser.flush()
-            time.sleep(1)
-            
-          elif ','.encode() in raw:
-            parsed = raw.split(','.encode())
-            parsed[-1].replace(bytes('\r\n','utf-8'),bytes('','utf-8'))
-            try:
-              data = [float(i) for i in parsed]
-              if len(data) == len(allData):
-                time.sleep(0.5)
-                i = 0
-                j = 0
-                msg = "{"
-                if allCnt > 10:
-                  allCnt = 0
-                  sendAll = True
-                else:
-                  allCnt = allCnt + 1
-                  sendAll = False
-                changed = [" "] * len(allData)
-                for key in allData:
-                  if flushData:
-                    ser.flushInput()
-                    ser.flushOutput()
-                    time.sleep(0.1)
-                    flushData = False
-                    break
-                  if not allData[key] == data[i] or sendAll:
-                    allData[key] = data[i]
-                    changed[j] = key
-                    j = j + 1
-                  i = i + 1
-                i = 0
-                j = 0
-                for changedKey in changed:
-                  if not changedKey == " ": 
-                    msg = msg + "\"" + changedKey + "\":" + str(allData[changedKey]) + ","
-                    if i % 2 == 0 or changed[i+1] == " ":
-                      msg = msg[:-1]
-                      msg = msg + '}'
-                      print(msg)
-                      result = client.publish(telemetry, msg)
-                      status = result[0]
-                      if not status == 0:
-                        print(f"Failed to send message to topic {telemetry}")
-                        msg = "{"
-                      else:
-                        time.sleep(0.1)
-                        msg = "{"
-                    i = i + 1
-                  else:
-                    changed = [" "] * len(allData)
-                    break
-                  
-                ser.reset_input_buffer()
-                
-            except Exception as e:
-              print(e)
-        except serial.serialutil.SerialException or FileNotFoundError:
-          passed = False
-  except KeyboardInterrupt:
-    print('Interrupted')
-    
 if __name__ == '__main__':
   main()
-
