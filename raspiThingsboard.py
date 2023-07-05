@@ -204,7 +204,7 @@ def main():
                       log.warning(f"Failed to send message to topic {telemetry}")
                       msg = "{"
                     else:
-                      time.sleep(0.1)
+                      time.sleep(0.5)
                       msg = "{"
                   i = i + 1
                 else:
