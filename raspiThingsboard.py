@@ -1,24 +1,33 @@
 import paho.mqtt.client as mqtt
-import time, logging,sys,struct,re,os,subprocess,serial
+import time, logging,sys,struct,re,os,subprocess,serial,optparse,threading
 import logging.handlers as handlers
 import os.path
-import threading
-try:
-  username = sys.argv[1]
-except:
-  print("Missing MQTT username argument!")
-  sys.exit(1)
-  
-try:
-  serialDevice = sys.argv[2]
-except:
-  serialDevice = '/dev/ttyACM0'
+import RPi.GPIO as GPIO
 
-host = '34.236.51.120'
-port = 1883
+GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(27, GPIO.OUT)
+GPIO.output(27, GPIO.HIGH)
+
+usage = "usage: %prog [options] arg1 arg2..."
+parser = optparse.OptionParser(usage=usage)
+
+parser.add_option('-u','--username',action="store",type="string",dest='username',help ='specify the MQTT username/clientID to connect to. (Required)')
+parser.add_option('-p','--password',action="store",type="string",dest='password',help ='specify the MQTT password related to specified username.',default="test1234")
+parser.add_option('-i','--ip',action="store",type="string",dest='host',help ='specify the MQTT password related to specified username.',default="34.236.51.120")
+parser.add_option('-o','--port',action="store",type="string",dest ='serialDevice',help='Specify serial device tty port.',default="/dev/ttyACM0")
+parser.add_option('-d','--debug',action="store_true",dest ='debug',help='Print out debug messages.')
+parser.add_option('-q','--quiet',action="store_true",dest ='quiet',help='Silence all stdout messages.')
+
+
+(options, args) = parser.parse_args()
+if not options.username:   # if filename is not given
+  parser.error('Username not given')
+if options.debug and options.quiet:
+  parser.error("options -q and -d are mutually exclusive")
+mqttPort = 1883
 telemetry = 'v1/devices/me/telemetry'
 attributes = 'v1/devices/me/attributes'
-password = 'test1234'
 allowed_commands = ("bl508","bmmRun","fcv134","fcv141","fcv205","fcv549","legacy","pmp204","twv308","twv310","xv501","xv217","xv474","xv1100","xv122","psaReady","psaACK","psaON")
 allData = {
     "time": 0.0,
@@ -97,16 +106,16 @@ allData = {
     "psaFail":0,
     "autotwv":0,
   }
-log = logging.getLogger("reformer")
-log.setLevel(logging.DEBUG)
+log = logging.getLogger(options.username)
+log.setLevel(logging.DEBUG if options.debug else logging.INFO)
+if not options.quiet:
+  handler = logging.StreamHandler(sys.stdout)
+  handler.setLevel(logging.DEBUG if options.debug else logging.INFO)
+  formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+  handler.setFormatter(formatter)
+  log.addHandler(handler)
 
-handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-log.addHandler(handler)
-
-rotateHandler = handlers.RotatingFileHandler("/home/defaultUser/reformerLog.log", maxBytes=200000,backupCount=5)
+rotateHandler = handlers.RotatingFileHandler("/home/defaultUser/"+options.username+"Log.log", maxBytes=200000,backupCount=5)
 rotateHandler.setLevel(logging.INFO)
 rotateFormatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 rotateHandler.setFormatter(rotateFormatter)
@@ -125,7 +134,7 @@ def serialConnect():
   while True:
     try:
       ser = serial.Serial(
-        port=serialDevice,
+        port=options.serialDevice,
         baudrate = 9600,
         parity=serial.PARITY_NONE,
         stopbits=serial.STOPBITS_ONE,
@@ -214,10 +223,8 @@ def main():
               ser.reset_input_buffer()
               
           except Exception as e:
-             if not "could not convert string to float" in str(e) and not "list index out of range" in str(e):
-               log.warning("Parsing Failure: " + str(e))
-             else:
-               pass
+            if not "could not convert string to float" in str(e) and not "list index out of range" in str(e):
+              log.warning("Parsing Failure: " + str(e))
       except serial.serialutil.SerialException or FileNotFoundError:
         serialConnect()
   except KeyboardInterrupt:
@@ -252,8 +259,8 @@ def connectionCheck(serialPort, interval=1):
       client.loop_stop()
       sys.exit(1)
     #continually check for existance of serial device
-    # if not os.path.isfile(serialDevice):
-      # log.critical("Serial Device at " + serialDevice + " has been disconnected. Exiting.")
+    # if not os.path.isfile(options.serialDevice):
+      # log.critical("Serial Device at " + options.serialDevice + " has been disconnected. Exiting.")
       # client.loop_stop()
       # sys.exit(1)
       
@@ -350,12 +357,12 @@ def on_disconnect(client, userdata, rc):
 
 #########################################################################################################################################################
 
-conn_controller = threading.Thread(target=connectionCheck, args=(serialDevice, 1,))
+conn_controller = threading.Thread(target=connectionCheck, args=(options.serialDevice, 1,))
 conn_controller.setDaemon(True)
 conn_controller.start()
 
-client = mqtt.Client(username)
-client.username_pw_set(username, password)
+client = mqtt.Client(options.username)
+client.username_pw_set(options.username, options.password)
 client.enable_logger(log)
 #client.will_set(telemetry, payload=None, qos=1, retain=True)
 #client.reconnect_delay_set(min_delay=1, max_delay=120)
@@ -364,7 +371,7 @@ client.on_message = on_message
 client.on_publish = on_publish
 client.on_subscribe = on_subscribe
 client.on_disconnect = on_disconnect
-client.connect(host, port, 60)
+client.connect(options.host, mqttPort, 60)
 client.loop_start()
 #client.publish(telemetry, '{"tester":"84834"}',qos=1,retain=True)
 
