@@ -158,6 +158,7 @@ def main():
   serialConnect()
   global ser
   global flushData
+  errCnt = 0
   try:
     allCnt = 0
     while True:
@@ -225,12 +226,31 @@ def main():
           except Exception as e:
             if not "could not convert string to float" in str(e) and not "list index out of range" in str(e):
               log.warning("Parsing Failure: " + str(e))
+              
+        errCnt = 0
+        
       except serial.serialutil.SerialException or FileNotFoundError:
         serialConnect()
+      except Exception as e:
+        if errCnt == 0:
+          log.error(str(e))
+          errCnt = errCnt + 1
+        elif errCnt > 5:
+          log.critical("Unable to recover from error: "+str(e)+" Exiting...")
+          client.loop_stop()
+          errCnt = 0
+          sys.exit(1)
+        else:
+          errCnt = errCnt + 1
+        
   except KeyboardInterrupt:
     log.info('Manual User Shutdown Initiatated')
     client.loop_stop()
     sys.exit(0)
+  except Exception as e:
+    log.critical(str(e)+" Exiting...")
+    client.loop_stop()
+    sys.exit(1)
     
     
     
