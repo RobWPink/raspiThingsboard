@@ -214,7 +214,10 @@ def main():
               ser.reset_input_buffer()
               
           except Exception as e:
-            log.warning("Parsing Failure: " + str(e))
+             if not "could not convert string to float" in str(e) and not "list index out of range" in str(e):
+               log.warning("Parsing Failure: " + str(e))
+             else:
+               pass
       except serial.serialutil.SerialException or FileNotFoundError:
         serialConnect()
   except KeyboardInterrupt:
