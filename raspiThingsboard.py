@@ -106,6 +106,7 @@ allData = {
     "psaFail":0,
     "autotwv":0,
   }
+
 log = logging.getLogger(options.username)
 log.setLevel(logging.DEBUG if options.debug else logging.INFO)
 if not options.quiet:
@@ -122,15 +123,33 @@ rotateHandler.setFormatter(rotateFormatter)
 log.addHandler(rotateHandler)
 
 flushData = False
-#Check for existance of serial device
-# if not os.path.isfile(serialDevice):
-  # log.critical("Serial Device at " + serialDevice + " was not found.")
-  # sys.exit(1)
+def rebootRestart(errorMessage,errorType):
+  f = open('/home/defaultUser/raspiThingsboard/restartCnt', r);
+  if not errorType in f.readline():
+    log.critical(errorMessage+" Attempting reboot to resolve the issue.")
+    f.close()
+    f = open('/home/defaultUser/raspiThingsboard/restartCnt',w)
+    f.write(errorType)
+    f.close()
+    client.loop_stop()
+    os.system("echo 'oneh2' | sudo -S reboot")
+    sys.exit(1)
+  else:
+    log.critical(errorMessage+" Reboot did not resolve the problem. Check connections and manually reboot.")
+    f.close()
+    f = open('/home/defaultUser/raspiThingsboard/restartCnt',w)
+    f.write("")
+    f.close()
+    client.loop_stop()
+    sys.exit(1)
+    
 
 def serialConnect():
   #check if we can connect to device
   serialTimeout = 0
   global ser
+  global rebootCnt
+  global restartCnt
   while True:
     try:
       ser = serial.Serial(
@@ -146,9 +165,7 @@ def serialConnect():
       time.sleep(1)
       serialTimeout = serialTimeout + 1
       if serialTimeout > 10:
-        log.critical("Unable to connect to serial device. Exiting.")
-        client.loop_stop()
-        sys.exit(1)
+        rebootRestart("Unable to connect to serial device.","serialDisconnect")
 
 
 #########################################################################################################################################################
@@ -236,10 +253,8 @@ def main():
           log.error(str(e))
           errCnt = errCnt + 1
         elif errCnt > 5:
-          log.critical("Unable to recover from error: "+str(e)+" Exiting...")
-          client.loop_stop()
           errCnt = 0
-          sys.exit(1)
+          rebootRestart("Parsing Error Occured: "+str(e),"parse")
         else:
           errCnt = errCnt + 1
         
@@ -248,9 +263,7 @@ def main():
     client.loop_stop()
     sys.exit(0)
   except Exception as e:
-    log.critical(str(e)+" Exiting...")
-    client.loop_stop()
-    sys.exit(1)
+    rebootRestart("Critical Error Occured: "+str(e),str(e))
     
     
     
