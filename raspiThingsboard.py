@@ -377,6 +377,7 @@ def on_disconnect(client, userdata, rc):
     try:
       client.reconnect()
       log.info("Reconnected successfully!")
+      client.subscribe(attributes,qos=1)
       return
     except Exception as err:
       log.error("%s. Reconnect failed. Retrying...", err)
