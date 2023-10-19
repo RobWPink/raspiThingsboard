@@ -28,7 +28,7 @@ if options.debug and options.quiet:
 mqttPort = 1883
 telemetry = 'v1/devices/me/telemetry'
 attributes = 'v1/devices/me/attributes'
-allowed_commands = ("bl508","bmmRun","fcv134","fcv141","fcv205","fcv549","legacy","pmp204","twv308","twv310","xv501","xv217","xv474","xv1100","xv122","psaReady","psaACK","psaON")
+allowed_commands = ("bl508","bmmRun","xv475","fcv134","fcv141","fcv205","fcv549","legacy","pmp204","twv308","twv310","xv501","xv217","xv474","xv1100","xv122","psaReady","psaACK","psaON")
 allData = {
     "time": 0.0,
     "tt511": 0.0,
@@ -76,6 +76,8 @@ allData = {
     "xv122": 0,
     "twv308": 0,
     "twv310": 0,
+    "xv475": 0,
+    "lsw": 0,
     "twv308FeedBackOpen": 0,
     "twv308FeedBackClosed": 0,
     "twv310FeedBackOpen": 0,
