@@ -28,83 +28,35 @@ if options.debug and options.quiet:
 mqttPort = 1883
 telemetry = 'v1/devices/me/telemetry'
 attributes = 'v1/devices/me/attributes'
-allowed_commands = ("bl508","bmmRun","fcv134","fcv141","fcv205","fcv549","legacy","pmp204","twv308","twv310","xv501","xv217","xv474","xv1100","xv122","psaReady","psaACK","psaON")
+allowed_commands = ("d1","d2","c1","c2","ooo","valve","legacy")
 allData = {
-    "time": 0.0,
-    "tt511": 0.0,
-    "tt512": 0.0,
-    "burnerTemp": 0.0,
-    "tt513": 0.0,
-    "tt514": 0.0,
-    "tt407": 0.0,
-    "tt408": 0.0,
-    "tt410": 0.0,
-    "tt411": 0.0,
-    "tt430": 0.0,
-    "tt441": 0.0,
-    "tt442": 0.0,
-    "tt443": 0.0,
-    "tt444": 0.0,
-    "tt445": 0.0,
-    "tt446": 0.0,
-    "tt447": 0.0,
-    "tt448": 0.0,
-    "tt449": 0.0,
-    "tubeMean": 0.0,
-    "tubeMax": 0.0,
-    "tt142": 0.0,
-    "tt301": 0.0,
-    "tt303": 0.0,
-    "tt306": 0.0,
-    "tt313": 0.0,
-    "tt319": 0.0,
-    "bmmAlarm": 0,
-    "bmmProof": 0,
-    "estop": 0,
-    "greenButton": 0,
-    "greenPilot": 0,
-    "amberButton": 0,
-    "amberPilot": 0,
-    "psh": 0,
-    "psl": 0,
-    "zsl": 0,
-    "bmmRun": 0,
-    "xv501": 0,
-    "xv217": 0,
-    "xv474": 0,
-    "xv1100": 0,
-    "xv122": 0,
-    "twv308": 0,
-    "twv310": 0,
-    "twv308FeedBackOpen": 0,
-    "twv308FeedBackClosed": 0,
-    "twv310FeedBackOpen": 0,
-    "twv310FeedBackClosed": 0,
-    "fcv134FeedBack": 0.0,
-    "bl508FeedBack": 0.0,
-    "pmp204FeedBack": 0.0,
-    "fcv549FeedBack": 0.0,
-    "pt654": 0.0,
-    "pt304": 0.0,
-    "pt420": 0.0,
-    "pt383": 0.0,
-    "pt318": 0.0,
-    "ft132": 0.0,
-    "ft219": 0.0,
-    "bl508": 0.0,
-    "fcv134": 0.0,
-    "pmp204": 0.0,
-    "fcv141": 0.0,
-    "fcv205": 0.0,
-    "fcv549": 0.0,
-    "fcv141FeedBack": 0.0,
-    "fcv205FeedBack": 0.0,
-    "pt100": 0.0,
-    "psaON":0,
-    "psaReady":0,
-    "psaACK":0,
-    "psaFail":0,
-    "autotwv":0,
+    "ABUTTON" : 0,
+    "RBUTTON" : 0,
+    "GBUTTON" : 0,
+    "SW1" : 0,
+    "LSR_IN" : 0,
+    "GSR_IN" : 0,
+    "DMD_IN" : 0,
+    "ESTOP_IN" : 0,
+    "d1" : 0,
+    "d2" : 0,
+    "c1" : 0,
+    "c2" : 0,
+    "OK" : 0,
+    "GSR" : 0,
+    "LSR" : 0,
+    "DMD_OUT1" : 0,
+    "DMD_OUT2" : 0,
+    "SUP_OUT1" : 0,
+    "SUP_OUT2" : 0,
+    "GLIGHT" : 0,
+    "ALIGHT" : 0,
+    "RLIGHT" : 0,
+    "compressorPt" : 0.0,
+    "trailer1Pt" : 0.0,
+    "trailer2Pt" : 0.0,
+    "dispenserPt" : 0.0,
+    "numDisp" : 0,
   }
 
 log = logging.getLogger(options.username)
@@ -124,7 +76,7 @@ log.addHandler(rotateHandler)
 
 flushData = False
 def rebootRestart(errorMessage,errorType):
-  f = open('/home/defaultUser/raspiThingsboard/restartCnt', r);
+  f = open('/home/defaultUser/raspiThingsboard/restartCnt', r)
   if not errorType in f.readline():
     log.critical(errorMessage+" Attempting reboot to resolve the issue.")
     f.close()
@@ -194,7 +146,18 @@ def main():
           parsed[-1].replace(bytes('\r\n','utf-8'),bytes('','utf-8')) # chop off extra special chars
           try:
             data = [float(i) for i in parsed] # Convert all stringed numbers into floats
-            if len(data) == len(allData): # Only process if we have ALL of the data
+            if(len(data) == data[26]*8+26+1): #check if we have all data
+
+              if len(data) != len(allData): # add additional data to allData
+                for i in range(data[26]):
+                  allData['currentPsi'+i+1] = 0.0
+                  allData['targetPsi'+i+1] = 0.0
+                  allData['initialPsi'+i+1] = 0.0
+                  allData['finalPsi'+i+1] = 0.0
+                  allData['fillTime'+i+1] = 0.0
+                  allData['valve'+i+1] = 0
+                  allData['outOfOrder'+i+1] = 0
+                  allData['lsr'+i+1] = 0
               time.sleep(0.5)
               i = 0
               j = 0
@@ -326,15 +289,6 @@ def on_message(client, userdata, msg):
       number = re.search('{".*":(.+?)}', received).group(1)
       name = re.search('{"(.+?)":.*}', received).group(1)
       if name in allowed_commands:
-        if name == "bmmRun":
-          name = "bmm"
-        
-        if name == "psaON":
-          if 'false' in number:
-            name = "PSA_OFF"
-          elif 'true' in number:
-            name = "PSA_ON"
-
         if 'false' in number or 'true' in number:
           output = name
           
