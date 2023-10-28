@@ -145,7 +145,8 @@ def main():
           try:
             parsed = raw.split(','.encode()) # convert sting list into python list of strings
             del parsed[-1]
-            print(parsed)
+            data = [float(i) for i in parsed]
+            print(data)
           except Exception as e:
             print(e)
             errCnt = 0
