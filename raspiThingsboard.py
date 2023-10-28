@@ -142,9 +142,9 @@ def main():
           time.sleep(1)
           
         elif ','.encode() in raw: # Check if we are receiving listed data
-
-          parsed = raw.split(','.encode()) # convert sting list into python list of strings
-          parsed[-1].replace(bytes('\r\n','utf-8'),bytes('','utf-8')) # chop off extra special chars
+          try:
+            parsed = raw.split(','.encode()) # convert sting list into python list of strings
+            parsed[-1].replace(bytes('\r\n','utf-8'),bytes('','utf-8')) # chop off extra special chars
           '''
           try:
             data = [float(i) for i in parsed] # Convert all stringed numbers into floats
@@ -212,6 +212,8 @@ def main():
             if not "could not convert string to float" in str(e) and not "list index out of range" in str(e):
               log.warning("Parsing Failure: " + str(e))
           '''            
+      except Exception as e:
+        print(e)
         errCnt = 0
          
       except serial.serialutil.SerialException or FileNotFoundError:
