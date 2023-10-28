@@ -145,76 +145,10 @@ def main():
           try:
             parsed = raw.split(','.encode()) # convert sting list into python list of strings
             parsed[-1].replace(bytes('\r\n','utf-8'),bytes('','utf-8')) # chop off extra special chars
-          '''
-          try:
-            data = [float(i) for i in parsed] # Convert all stringed numbers into floats
-            print(len(data))
-            print(data[26]*8+26+1)
-            print(data[26])
-            if(len(data) == data[26]*8+26+1): #check if we have all data
-
-              if len(data) != len(allData): # add additional data to allData
-                for i in range(data[26]):
-                  allData['currentPsi'+i+1] = 0.0
-                  allData['targetPsi'+i+1] = 0.0
-                  allData['initialPsi'+i+1] = 0.0
-                  allData['finalPsi'+i+1] = 0.0
-                  allData['fillTime'+i+1] = 0.0
-                  allData['valve'+i+1] = 0
-                  allData['outOfOrder'+i+1] = 0
-                  allData['lsr'+i+1] = 0
-              time.sleep(0.5)
-              i = 0
-              j = 0
-              msg = "{"
-              if allCnt > 10: # Every 10 messages send ALL data 
-                allCnt = 0
-              else:
-                allCnt = allCnt + 1
-              changed = [" "] * len(allData) # make list of all data that has changed since last loop
-              for key in allData:
-                if flushData:
-                  ser.flushInput()
-                  ser.flushOutput()
-                  time.sleep(0.1)
-                  flushData = False
-                  break
-                if not allData[key] == data[i] or allCnt == 10:
-                  allData[key] = data[i]
-                  changed[j] = key
-                  j = j + 1
-                i = i + 1
-              i = 0
-              j = 0
-              for changedKey in changed:
-                if not changedKey == " ": 
-                  msg = msg + "\"" + changedKey + "\":" + str(allData[changedKey]) + ","
-                  if i % 4 == 0 or changed[i+1] == " ":
-                    msg = msg[:-1]
-                    msg = msg + '}'
-                    log.debug(msg)
-                    result = client.publish(telemetry, msg)
-                    status = result[0]
-                    if not status == 0:
-                      log.warning(f"Failed to send message to topic {telemetry}")
-                      msg = "{"
-                    else:
-                      time.sleep(0.5)
-                      msg = "{"
-                  i = i + 1
-                else:
-                  changed = [" "] * len(allData)
-                  break
-                
-              ser.reset_input_buffer()
-             
+            
           except Exception as e:
-            if not "could not convert string to float" in str(e) and not "list index out of range" in str(e):
-              log.warning("Parsing Failure: " + str(e))
-        '''            
-      except Exception as e:
-        print(e)
-        errCnt = 0
+            print(e)
+            errCnt = 0
          
       except serial.serialutil.SerialException or FileNotFoundError:
         serialConnect()
