@@ -142,10 +142,11 @@ def main():
           time.sleep(1)
           
         elif ','.encode() in raw: # Check if we are receiving listed data
-          print("yes")
+
           parsed = raw.split(','.encode()) # convert sting list into python list of strings
           parsed[-1].replace(bytes('\r\n','utf-8'),bytes('','utf-8')) # chop off extra special chars
           try:
+            print("yes")
             data = [float(i) for i in parsed] # Convert all stringed numbers into floats
             print(len(data))
             print(data[26]*8+26+1)
