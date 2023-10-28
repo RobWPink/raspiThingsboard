@@ -146,10 +146,18 @@ def main():
             parsed = raw.split(','.encode()) # convert sting list into python list of strings
             del parsed[-1]
             data = [float(i) for i in parsed]
-            print(data)
-            print(len(data))
-            print(data[26]*8+26+1)
-            print(data[26])
+            if(len(data) == data[26]*8+26+1): #check if we have all data
+              if len(data) != len(allData): # add additional data to allData
+                for i in range(data[26]):
+                  allData['currentPsi'+i+1] = 0.0
+                  allData['targetPsi'+i+1] = 0.0
+                  allData['initialPsi'+i+1] = 0.0
+                  allData['finalPsi'+i+1] = 0.0
+                  allData['fillTime'+i+1] = 0.0
+                  allData['valve'+i+1] = 0
+                  allData['outOfOrder'+i+1] = 0
+                  allData['lsr'+i+1] = 0
+              print(allData)
           except Exception as e:
             print(e)
             errCnt = 0
