@@ -145,7 +145,7 @@ def main():
           try:
             parsed = raw.split(','.encode()) # convert sting list into python list of strings
             #parsed[-1].replace(bytes('\r\n','utf-8'),bytes('','utf-8')) # chop off extra special chars
-            print(parsed)
+            print(raw)
           except Exception as e:
             print(e)
             errCnt = 0
