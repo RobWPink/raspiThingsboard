@@ -148,7 +148,7 @@ def main():
             data = [float(i) for i in parsed]
             if(len(data) == data[26]*8+26+1): #check if we have all data
               if len(data) != len(allData): # add additional data to allData
-                for i in range(data[26]):
+                for i in range(int(data[26])):
                   allData['currentPsi'+i+1] = 0.0
                   allData['targetPsi'+i+1] = 0.0
                   allData['initialPsi'+i+1] = 0.0
