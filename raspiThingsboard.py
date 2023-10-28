@@ -133,7 +133,7 @@ def main():
     while True:
       try:
         raw=ser.readline()# grap raw serial data
-        log.debug(raw)
+        #log.debug(raw)
         if len(raw) < 2: # Make sure its actually data
           pass
           
@@ -147,6 +147,9 @@ def main():
             del parsed[-1]
             data = [float(i) for i in parsed]
             print(data)
+            print(len(data))
+            print(data[26]*8+26+1)
+            print(data[26])
           except Exception as e:
             print(e)
             errCnt = 0
