@@ -211,7 +211,7 @@ def main():
           except Exception as e:
             if not "could not convert string to float" in str(e) and not "list index out of range" in str(e):
               log.warning("Parsing Failure: " + str(e))
-          '''            
+        '''            
       except Exception as e:
         print(e)
         errCnt = 0
