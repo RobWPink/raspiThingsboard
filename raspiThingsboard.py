@@ -133,7 +133,7 @@ def main():
     while True:
       try:
         raw=ser.readline()# grap raw serial data
-        log.debug(raw)
+        #log.debug(raw)
         if len(raw) < 2: # Make sure its actually data
           pass
           
@@ -145,7 +145,7 @@ def main():
           try:
             parsed = raw.split(','.encode()) # convert sting list into python list of strings
             parsed[-1].replace(bytes('\r\n','utf-8'),bytes('','utf-8')) # chop off extra special chars
-            
+            print(parsed)
           except Exception as e:
             print(e)
             errCnt = 0
