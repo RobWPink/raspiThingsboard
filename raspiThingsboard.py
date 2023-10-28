@@ -145,8 +145,8 @@ def main():
 
           parsed = raw.split(','.encode()) # convert sting list into python list of strings
           parsed[-1].replace(bytes('\r\n','utf-8'),bytes('','utf-8')) # chop off extra special chars
+          '''
           try:
-            print("yes")
             data = [float(i) for i in parsed] # Convert all stringed numbers into floats
             print(len(data))
             print(data[26]*8+26+1)
@@ -207,13 +207,13 @@ def main():
                   break
                 
               ser.reset_input_buffer()
-              
+             
           except Exception as e:
             if not "could not convert string to float" in str(e) and not "list index out of range" in str(e):
               log.warning("Parsing Failure: " + str(e))
-              
+          '''            
         errCnt = 0
-        
+         
       except serial.serialutil.SerialException or FileNotFoundError:
         serialConnect()
       except Exception as e:
