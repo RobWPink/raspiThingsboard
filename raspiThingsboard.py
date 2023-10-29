@@ -28,7 +28,7 @@ if options.debug and options.quiet:
 mqttPort = 1883
 telemetry = 'v1/devices/me/telemetry'
 attributes = 'v1/devices/me/attributes'
-allowed_commands = ("d1","d2","c1","c2","ooo","valve","legacy")
+allowed_commands = ("manual","d1","d2","c1","c2","ooo","valve","legacy")
 allData = {
     "ABUTTON" : 0,
     "RBUTTON" : 0,
