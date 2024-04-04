@@ -4,18 +4,20 @@ import logging.handlers as handlers
 import os.path
 import RPi.GPIO as GPIO
 
-GPIO.setwarnings(False)
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(27, GPIO.OUT)
-GPIO.output(27, GPIO.HIGH)
+# GPIO.setwarnings(False)
+# GPIO.setmode(GPIO.BCM)
+# GPIO.setup(27, GPIO.OUT)
+# GPIO.output(27, GPIO.HIGH)
 
 usage = "usage: %prog [options] arg1 arg2..."
 parser = optparse.OptionParser(usage=usage)
 
-parser.add_option('-u','--username',action="store",type="string",dest='username',help ='specify the MQTT username/clientID to connect to. (Required)')
-parser.add_option('-p','--password',action="store",type="string",dest='password',help ='specify the MQTT password related to specified username.',default="test1234")
-parser.add_option('-i','--ip',action="store",type="string",dest='host',help ='specify the MQTT password related to specified username.',default="34.236.51.120")
+parser.add_option('-u','--username',action="store",type="string",dest='username',help ='Specify the MQTT username/clientID to connect to. (Required)')
+parser.add_option('-p','--password',action="store",type="string",dest='password',help ='Specify the MQTT password related to specified username.',default="test1234")
+parser.add_option('-i','--ip',action="store",type="string",dest='host',help ='Specify the MQTT password related to specified username.',default="34.236.51.120")
 parser.add_option('-o','--port',action="store",type="string",dest ='serialDevice',help='Specify serial device tty port.',default="/dev/ttyACM0")
+parser.add_option('-t','--telemety',action="store",type="string",dest='telemetry',help ='Specify the MQTT telemetry destination link',default='v1/devices/me/telemetry')
+parser.add_option('-a','--attributes',action="store",type="string",dest='attributes',help ='Specify the MQTT attribute destination link',default='v1/devices/me/attributes')
 parser.add_option('-d','--debug',action="store_true",dest ='debug',help='Print out debug messages.')
 parser.add_option('-q','--quiet',action="store_true",dest ='quiet',help='Silence all stdout messages.')
 
@@ -26,86 +28,7 @@ if not options.username:   # if filename is not given
 if options.debug and options.quiet:
   parser.error("options -q and -d are mutually exclusive")
 mqttPort = 1883
-telemetry = 'v1/devices/me/telemetry'
-attributes = 'v1/devices/me/attributes'
-allowed_commands = ("bl508","bmmRun","fcv134","fcv141","fcv205","fcv549","legacy","pmp204","twv308","twv310","xv501","xv217","xv474","xv1100","xv122","psaReady","psaACK","psaON")
-allData = {
-    "time": 0.0,
-    "tt511": 0.0,
-    "tt512": 0.0,
-    "burnerTemp": 0.0,
-    "tt513": 0.0,
-    "tt514": 0.0,
-    "tt407": 0.0,
-    "tt408": 0.0,
-    "tt410": 0.0,
-    "tt411": 0.0,
-    "tt430": 0.0,
-    "tt441": 0.0,
-    "tt442": 0.0,
-    "tt443": 0.0,
-    "tt444": 0.0,
-    "tt445": 0.0,
-    "tt446": 0.0,
-    "tt447": 0.0,
-    "tt448": 0.0,
-    "tt449": 0.0,
-    "tubeMean": 0.0,
-    "tubeMax": 0.0,
-    "tt142": 0.0,
-    "tt301": 0.0,
-    "tt303": 0.0,
-    "tt306": 0.0,
-    "tt313": 0.0,
-    "tt319": 0.0,
-    "bmmAlarm": 0,
-    "bmmProof": 0,
-    "estop": 0,
-    "greenButton": 0,
-    "greenPilot": 0,
-    "amberButton": 0,
-    "amberPilot": 0,
-    "psh": 0,
-    "psl": 0,
-    "zsl": 0,
-    "bmmRun": 0,
-    "xv501": 0,
-    "xv217": 0,
-    "xv474": 0,
-    "xv1100": 0,
-    "xv122": 0,
-    "twv308": 0,
-    "twv310": 0,
-    "twv308FeedBackOpen": 0,
-    "twv308FeedBackClosed": 0,
-    "twv310FeedBackOpen": 0,
-    "twv310FeedBackClosed": 0,
-    "fcv134FeedBack": 0.0,
-    "bl508FeedBack": 0.0,
-    "pmp204FeedBack": 0.0,
-    "fcv549FeedBack": 0.0,
-    "pt654": 0.0,
-    "pt304": 0.0,
-    "pt420": 0.0,
-    "pt383": 0.0,
-    "pt318": 0.0,
-    "ft132": 0.0,
-    "ft219": 0.0,
-    "bl508": 0.0,
-    "fcv134": 0.0,
-    "pmp204": 0.0,
-    "fcv141": 0.0,
-    "fcv205": 0.0,
-    "fcv549": 0.0,
-    "fcv141FeedBack": 0.0,
-    "fcv205FeedBack": 0.0,
-    "pt100": 0.0,
-    "psaON":0,
-    "psaReady":0,
-    "psaACK":0,
-    "psaFail":0,
-    "autotwv":0,
-  }
+
 
 log = logging.getLogger(options.username)
 log.setLevel(logging.DEBUG if options.debug else logging.INFO)
@@ -124,7 +47,7 @@ log.addHandler(rotateHandler)
 
 flushData = False
 def rebootRestart(errorMessage,errorType):
-  f = open('/home/defaultUser/raspiThingsboard/restartCnt', r);
+  f = open('/home/defaultUser/raspiThingsboard/restartCnt', r)
   if not errorType in f.readline():
     log.critical(errorMessage+" Attempting reboot to resolve the issue.")
     f.close()
@@ -181,83 +104,21 @@ def main():
     while True:
       try:
         raw=ser.readline()# grap raw serial data
-        log.debug(raw)
+        log.debug('Raw: ' + raw)
         if len(raw) < 2: # Make sure its actually data
           pass
           
-        elif 'OK'.encode() in raw:
-          ser.flush()
-          time.sleep(1)
-          
-        elif ','.encode() in raw: # Check if we are receiving listed data
-          parsed = raw.split(','.encode()) # convert sting list into python list of strings
-          parsed[-1].replace(bytes('\r\n','utf-8'),bytes('','utf-8')) # chop off extra special chars
-          try:
-            data = [float(i) for i in parsed] # Convert all stringed numbers into floats
-            if len(data) == len(allData): # Only process if we have ALL of the data
-              time.sleep(0.5)
-              i = 0
-              j = 0
-              msg = "{"
-              if allCnt > 10: # Every 10 messages send ALL data 
-                allCnt = 0
-              else:
-                allCnt = allCnt + 1
-              changed = [" "] * len(allData) # make list of all data that has changed since last loop
-              for key in allData:
-                if flushData:
-                  ser.flushInput()
-                  ser.flushOutput()
-                  time.sleep(0.1)
-                  flushData = False
-                  break
-                if not allData[key] == data[i] or allCnt == 10:
-                  allData[key] = data[i]
-                  changed[j] = key
-                  j = j + 1
-                i = i + 1
-              i = 0
-              j = 0
-              for changedKey in changed:
-                if not changedKey == " ": 
-                  msg = msg + "\"" + changedKey + "\":" + str(allData[changedKey]) + ","
-                  if i % 4 == 0 or changed[i+1] == " ":
-                    msg = msg[:-1]
-                    msg = msg + '}'
-                    log.debug(msg)
-                    result = client.publish(telemetry, msg)
-                    status = result[0]
-                    if not status == 0:
-                      log.warning(f"Failed to send message to topic {telemetry}")
-                      msg = "{"
-                    else:
-                      time.sleep(0.5)
-                      msg = "{"
-                  i = i + 1
-                else:
-                  changed = [" "] * len(allData)
-                  break
-                
-              ser.reset_input_buffer()
-              
-          except Exception as e:
-            if not "could not convert string to float" in str(e) and not "list index out of range" in str(e):
-              log.warning("Parsing Failure: " + str(e))
-              
-        errCnt = 0
-        
-      except serial.serialutil.SerialException or FileNotFoundError:
-        serialConnect()
+        elif '{'.encode() in raw and '}'.encode() in raw:
+          msg = raw.decode()
+          log.debug('Sending: ' + msg)
+          result = client.publish(options.telemetry, msg)
+          status = result[0]
+          if not status == 0:
+            log.warning(f"Failed to send message to topic {options.telemetry}")
       except Exception as e:
-        if errCnt == 0:
-          log.error(str(e))
-          errCnt = errCnt + 1
-        elif errCnt > 5:
-          errCnt = 0
-          rebootRestart("Parsing Error Occured: "+str(e),"parse")
-        else:
-          errCnt = errCnt + 1
-        
+        log.warning("Serial Read Error: " + e)
+        ser.reset_input_buffer()
+            
   except KeyboardInterrupt:
     log.info('Manual User Shutdown Initiatated')
     client.loop_stop()
@@ -306,7 +167,7 @@ def on_connect(client, userdata, flags, rc):
   
   # Subscribing in on_connect() means that if we lose the connection and
   # reconnect then subscriptions will be renewed.
-  client.subscribe(attributes,qos=1)
+  client.subscribe(options.attributes,qos=1)
 
 #########################################################################################################################################################
 # The callback for when a PUBLISH message is received from the server.
@@ -325,26 +186,17 @@ def on_message(client, userdata, msg):
       received = received.replace("ctl","")
       number = re.search('{".*":(.+?)}', received).group(1)
       name = re.search('{"(.+?)":.*}', received).group(1)
-      if name in allowed_commands:
-        if name == "bmmRun":
-          name = "bmm"
-        
-        if name == "psaON":
-          if 'false' in number:
-            name = "PSA_OFF"
-          elif 'true' in number:
-            name = "PSA_ON"
-
-        if 'false' in number or 'true' in number:
-          output = name
-          
-        elif "legacy" in received and not "deleted" in received:
-          output = re.search('{"legacy":"(.+?)"}', received).group(1)
-          
-        else:
-          output = name +" "+ number
-      elif "deleted" in received:
+      if "deleted" in received:
         output = ''
+      elif 'false' in number or 'true' in number:
+        output = name
+        
+      elif "legacy" in received and not "deleted" in received:
+        output = re.search('{"legacy":"(.+?)"}', received).group(1)
+        
+      else:
+        output = name +" "+ number
+      
 
       if not output == '':
         log.info("Fowarding command: " + output)
@@ -377,7 +229,7 @@ def on_disconnect(client, userdata, rc):
     try:
       client.reconnect()
       log.info("Reconnected successfully!")
-      client.subscribe(attributes,qos=1)
+      client.subscribe(options.attributes,qos=1)
       return
     except Exception as err:
       log.error("%s. Reconnect failed. Retrying...", err)
